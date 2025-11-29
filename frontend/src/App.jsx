@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { BrowserProvider, Contract } from 'ethers'
-import { useAccount, useWalletClient, usePublicClient } from 'wagmi'
+import { useAccount, useWalletClient, usePublicClient, useChainId } from 'wagmi'
 import { ConnectButton } from '@rainbow-me/rainbowkit'
 import './App.css'
 import { CONTRACT_ADDRESS, SEPOLIA_CHAIN_ID } from './config'
@@ -12,6 +12,7 @@ function App() {
   const { address, isConnected } = useAccount()
   const { data: walletClient } = useWalletClient()
   const publicClient = usePublicClient()
+  const chainId = useChainId()
 
   const [provider, setProvider] = useState(null)
   const [signer, setSigner] = useState(null)
@@ -30,6 +31,7 @@ function App() {
   const [decryptedDays, setDecryptedDays] = useState(null)
   const [status, setStatus] = useState('')
   const [today] = useState(new Date())
+  const prevChainIdRef = useRef(null)
 
   // Get current month information
   const year = today.getFullYear()
@@ -296,23 +298,20 @@ function App() {
     }
   }
 
-  // Listen for chain changes
+  // Listen for chain changes (only reload when chain actually changes, not on every block)
   useEffect(() => {
-    if (publicClient) {
-      const unwatch = publicClient.watchBlockNumber({
-        onBlockNumber: () => {
-          // Chain changed, reload to reinitialize
-          if (isConnected) {
-            window.location.reload()
-          }
-        },
-      })
-
-      return () => {
-        unwatch()
+    if (isConnected && chainId) {
+      // Check if chain actually changed
+      if (prevChainIdRef.current !== null && prevChainIdRef.current !== chainId) {
+        console.log('Chain changed, reloading...', { from: prevChainIdRef.current, to: chainId })
+        window.location.reload()
+        return
       }
+      
+      // Store current chain ID
+      prevChainIdRef.current = chainId
     }
-  }, [publicClient, isConnected])
+  }, [chainId, isConnected])
 
   // Load user data
   useEffect(() => {
