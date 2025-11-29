@@ -1,0 +1,36 @@
+# Gitignore for Hardhat project
+
+# Dependencies
+node_modules/
+
+# Build outputs
+artifacts/
+cache/
+typechain/
+typechain-types/
+
+# Environment variables
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Testing
+coverage/
+coverage.json
+
+# Hardhat files
+deployments/localhost/

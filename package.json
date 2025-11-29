@@ -1,0 +1,30 @@
+{
+  "name": "daily-checkin-fhevm",
+  "version": "1.0.0",
+  "description": "Daily Check-in DApp with FHEVM encrypted counter",
+  "main": "index.js",
+  "scripts": {
+    "compile": "hardhat compile",
+    "test": "hardhat test",
+    "deploy:localhost": "hardhat run scripts/deploy.js --network localhost",
+    "deploy:sepolia": "hardhat run scripts/deploy.js --network sepolia",
+    "node": "hardhat node"
+  },
+  "keywords": [
+    "fhevm",
+    "zama",
+    "daily-checkin",
+    "dapp"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "hardhat": "^2.22.0"
+  },
+  "dependencies": {
+    "@fhevm/solidity": "^0.9.1",
+    "@zama-fhe/relayer-sdk": "^0.3.0-5",
+    "dotenv": "^16.4.5"
+  }
+}
