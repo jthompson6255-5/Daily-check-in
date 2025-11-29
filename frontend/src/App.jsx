@@ -56,9 +56,37 @@ function App() {
         setIsLoading(true)
         setStatus('Initializing wallet connection...')
 
-        // For injected wallets (MetaMask, OKX), use window.ethereum directly
-        // This is required for FHEVM SDK compatibility
-        const ethereumProvider = window.ethereum
+        // Detect the correct provider based on connected wallet
+        // OKX wallet uses window.okxwallet, MetaMask uses window.ethereum
+        let ethereumProvider = null
+        
+        // Check walletClient to determine which wallet is connected
+        const walletName = walletClient?.name?.toLowerCase() || ''
+        const walletId = walletClient?.id?.toLowerCase() || ''
+        const win = window
+        
+        console.log('[Wallet] Detecting provider', { walletName, walletId, hasOkx: !!win.okxwallet, hasEthereum: !!win.ethereum })
+        
+        // Check for OKX wallet first (if OKX is connected or available)
+        // OKX wallet provider can be at window.okxwallet.ethereum or window.okxwallet
+        if (walletName.includes('okx') || walletId.includes('okx') || win.okxwallet) {
+          // Try window.okxwallet.ethereum first (most common)
+          if (win.okxwallet?.ethereum) {
+            ethereumProvider = win.okxwallet.ethereum
+            console.log('[Wallet] Using OKX wallet provider (okxwallet.ethereum)')
+          } 
+          // Fallback to window.okxwallet directly
+          else if (win.okxwallet) {
+            ethereumProvider = win.okxwallet
+            console.log('[Wallet] Using OKX wallet provider (okxwallet)')
+          }
+        }
+        
+        // Fallback to MetaMask or other injected wallets
+        if (!ethereumProvider && win.ethereum) {
+          ethereumProvider = win.ethereum
+          console.log('[Wallet] Using window.ethereum provider')
+        }
         
         if (!ethereumProvider) {
           throw new Error('No ethereum provider found. Please install MetaMask or OKX wallet.')
@@ -66,7 +94,26 @@ function App() {
 
         // Create BrowserProvider and Signer
         const newProvider = new BrowserProvider(ethereumProvider)
-        const newSigner = await newProvider.getSigner()
+        
+        // Check if user rejected the connection request
+        let newSigner
+        try {
+          newSigner = await newProvider.getSigner()
+        } catch (signerError) {
+          // Handle user rejection or connection errors
+          if (signerError?.code === 4001 || signerError?.message?.includes('rejected') || signerError?.message?.includes('User rejected')) {
+            setStatus('⚠️ Connection rejected. Please try connecting again.')
+            setIsLoading(false)
+            return
+          }
+          // Handle "could not coalesce" error (multiple pending requests)
+          if (signerError?.code === -32002 || signerError?.message?.includes('coalesce')) {
+            setStatus('⚠️ Please wait for the previous connection request to complete.')
+            setIsLoading(false)
+            return
+          }
+          throw signerError
+        }
 
         setProvider(newProvider)
         setSigner(newSigner)
@@ -77,9 +124,9 @@ function App() {
 
         setStatus('Wallet connected! Initializing FHEVM...')
 
-        // Initialize FHEVM after wallet connection
+        // Initialize FHEVM after wallet connection (pass the correct provider)
         try {
-          const instance = await initFhevm()
+          const instance = await initFhevm(ethereumProvider)
           setFhevmInstance(instance)
 
           // Also set in fhevm.js module
@@ -93,7 +140,15 @@ function App() {
         }
       } catch (error) {
         console.error('Failed to initialize wallet:', error)
-        setStatus(`Failed to initialize wallet: ${error.message}`)
+        
+        // Better error messages for common errors
+        if (error?.code === 4001 || error?.message?.includes('rejected') || error?.message?.includes('User rejected')) {
+          setStatus('⚠️ Connection rejected. Please try connecting again.')
+        } else if (error?.code === -32002 || error?.message?.includes('coalesce')) {
+          setStatus('⚠️ Please wait for the previous connection request to complete.')
+        } else {
+          setStatus(`Failed to initialize wallet: ${error.message || 'Unknown error'}`)
+        }
       } finally {
         setIsLoading(false)
       }
