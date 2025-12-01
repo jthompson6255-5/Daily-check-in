@@ -1,7 +1,7 @@
 # 📅 Daily Check-in DApp with FHEVM
 
 A decentralized daily check-in application with encrypted counter using Zama's FHEVM (Fully Homomorphic Encryption Virtual Machine).
-
+video:https://youtu.be/FQs9syAQ2Ng
 ## 🎯 Features
 
 - ✅ **Daily Check-in System** - Check in once every 24 hours
