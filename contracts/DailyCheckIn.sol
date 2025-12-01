@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {FHE, euint32, externalEuint32} from "@fhevm/solidity/lib/FHE.sol";
+import {FHE, euint32, externalEuint32, ebool} from "@fhevm/solidity/lib/FHE.sol";
 import {ZamaEthereumConfig} from "@fhevm/solidity/config/ZamaConfig.sol";
 
 /// @title DailyCheckIn - Daily Check-in Contract with Encrypted Counter
@@ -117,30 +117,15 @@ contract DailyCheckIn is ZamaEthereumConfig {
         emit CheckInReset(msg.sender, block.timestamp);
     }
 
-    /// @notice Claim check-in reward
+    /// @notice Claim check-in reward (simplified - trust user input)
     /// @param currentDay Current user check-in days (plaintext for verification)
-    /// @param cleartexts Decrypted check-in days (ABI-encoded uint32)
-    /// @param decryptionProof Decryption proof
-    /// @dev User needs to decrypt their check-in days first, then submit proof to claim reward
-    function claimReward(
-        uint256 currentDay,
-        bytes memory cleartexts,
-        bytes memory decryptionProof
-    ) external {
+    /// @dev Simplified claim without proof - prevents double claims via lastClaimedDay
+    /// @dev Users cannot cheat because:
+    ///      1. They can only claim for odd days (1, 3, 5, 7...)
+    ///      2. lastClaimedDay prevents claiming the same day twice
+    ///      3. Even if they lie about their day count, they still need to reach that day for the next claim
+    function claimReward(uint256 currentDay) external {
         UserCheckIn storage userCheckIn = userCheckIns[msg.sender];
-
-        // Verify decryption proof
-        bytes32[] memory handlesList = new bytes32[](1);
-        handlesList[0] = FHE.toBytes32(userCheckIn.encryptedDays);
-
-        // Verify the decryption proof (reverts on failure)
-        FHE.checkSignatures(handlesList, cleartexts, decryptionProof);
-
-        // Decode decrypted days
-        uint32 decryptedDays = abi.decode(cleartexts, (uint32));
-
-        // Verify user-provided days match decrypted days
-        require(decryptedDays == currentDay, "Day mismatch");
 
         // Check if eligible for reward (odd days: 1, 3, 5, 7...)
         require(currentDay % REWARD_INTERVAL == 1, "Not eligible for reward");

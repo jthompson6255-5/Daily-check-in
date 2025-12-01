@@ -178,6 +178,23 @@ export const decryptWithProof = async (handle, contractAddress, signer) => {
     )
 
     console.log('🔓 Decryption result:', result)
+    console.log('🔍 Result type:', typeof result)
+    console.log('🔍 Result keys:', result ? Object.keys(result) : 'null')
+
+    // 打印所有可能的字段（处理 BigInt）
+    if (result) {
+      // 使用自定义序列化处理 BigInt
+      const resultStr = JSON.stringify(result, (key, value) =>
+        typeof value === 'bigint' ? value.toString() + 'n' : value
+      , 2)
+      console.log('🔍 Full result structure:', resultStr)
+      console.log('🔍 result.clearValues:', result.clearValues)
+      console.log('🔍 result.abiEncodedClearValues:', result.abiEncodedClearValues)
+      console.log('🔍 result.cleartexts:', result.cleartexts)
+      console.log('🔍 result.decryptionProof:', result.decryptionProof)
+      console.log('🔍 result.proof:', result.proof)
+      console.log('🔍 result[handle]:', result[handle])
+    }
 
     // Extract values from result
     let decryptedValue
@@ -199,6 +216,16 @@ export const decryptWithProof = async (handle, contractAddress, signer) => {
       console.log('✅ Decrypted value:', decryptedValue)
       console.log('✅ Cleartexts:', cleartexts)
       console.log('✅ Proof:', decryptionProof)
+
+      // 警告：如果没有证明数据
+      if (!cleartexts || !decryptionProof) {
+        console.error('❌ ERROR: userDecrypt does not return proof data!')
+        console.error('❌ This SDK method only supports client-side decryption, not on-chain verification.')
+        console.error('❌ Available fields:', Object.keys(result))
+        console.error('❌ You need to either:')
+        console.error('   1. Modify the contract to use encrypted comparison (FHE.eq) instead of proof verification')
+        console.error('   2. Use Gateway decrypt callback (requires contract changes)')
+      }
     }
 
     return {

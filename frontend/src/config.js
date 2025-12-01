@@ -1,11 +1,11 @@
 // Contract Configuration
-export const CONTRACT_ADDRESS = '0x56Ce073d19364608d53dCa4Ed7c928C3b6A125F3'
+export const CONTRACT_ADDRESS = '0x178333B276DdBC6eBb45C3C550bf9547b2ec943B'
 
 export const SEPOLIA_CHAIN_ID = 11155111
 
-// Infura RPC endpoint
-const INFURA_API_KEY = '3ec7c6d21e764c4d9470e4be10f73658'
-const INFURA_RPC_URL = `https://sepolia.infura.io/v3/${INFURA_API_KEY}`
+// Public Infura RPC endpoint (safe to expose in frontend)
+// Note: This is a public RPC endpoint, rate-limited per IP
+const INFURA_RPC_URL = 'https://sepolia.infura.io/v3/3ec7c6d21e764c4d9470e4be10f73658'
 
 export const CHAIN_CONFIG = {
   chainId: `0x${SEPOLIA_CHAIN_ID.toString(16)}`,

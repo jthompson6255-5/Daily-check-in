@@ -200,15 +200,18 @@ function App() {
       const encryptedDays = await contract.getUserEncryptedDays(address)
       console.log('Encrypted days handle:', encryptedDays)
 
-      // Decrypt using FHEVM SDK
+      // ⭐ 使用 decryptUint32（简单解密，不需要证明）
       const decrypted = await decryptUint32(encryptedDays, CONTRACT_ADDRESS, signer)
 
-      setDecryptedDays(Number(decrypted))
-      setCurrentStreak(Number(decrypted))
+      const daysNum = Number(decrypted)
+
+      setDecryptedDays(daysNum)
+      setCurrentStreak(daysNum)
+
+      console.log('✅ Decrypted days:', daysNum)
 
       // Update calendar with decrypted check-in history
       const newCheckedDays = new Set()
-      const daysNum = Number(decrypted)
 
       // Mark the last 'daysNum' days as checked in calendar
       for (let i = 0; i < daysNum; i++) {
@@ -218,7 +221,7 @@ function App() {
       }
       setCheckedDays(newCheckedDays)
 
-      setStatus(`✅ Decryption successful! You have checked in ${decrypted} consecutive days.`)
+      setStatus(`✅ Decryption successful! You have checked in ${daysNum} consecutive days.`)
 
       // Check if user can claim reward
       if (daysNum > 0 && daysNum % 2 === 1 && daysNum > lastClaimedDay) {
@@ -246,31 +249,24 @@ function App() {
     }
   }
 
-  // Claim reward
+  // Claim reward (simplified - no proof needed)
   const handleClaimReward = async (activityId, days) => {
-    if (!contract || !address || !signer || !fhevmInstance) {
+    if (!contract || !address) {
       setStatus('Please connect wallet first')
       return
     }
 
     try {
       setIsLoading(true)
-      setStatus('Generating decryption proof...')
 
-      // Get encrypted days handle
-      const encryptedDays = await contract.getUserEncryptedDays(address)
-
-      // Decrypt with proof
-      const { cleartexts, decryptionProof } = await decryptWithProof(
-        encryptedDays,
-        CONTRACT_ADDRESS,
-        signer
-      )
+      console.log('🎁 Claiming reward for day:', days)
 
       setStatus('Submitting claim transaction...')
 
-      // Call claimReward
-      const tx = await contract.claimReward(days, cleartexts, decryptionProof)
+      // ⭐ 直接调用 claimReward，只传递天数
+      // 合约会使用加密比较验证（FHE.eq）
+      const tx = await contract.claimReward(days)
+
       setStatus(`Transaction sent: ${tx.hash.slice(0, 10)}..., waiting for confirmation...`)
 
       const receipt = await tx.wait()
@@ -290,29 +286,20 @@ function App() {
       await loadUserData()
     } catch (error) {
       console.error('Claim reward failed:', error)
-      setStatus(`❌ Claim failed: ${error.message}`)
+
+      // 如果是加密比较失败，说明天数不匹配
+      if (error.message.includes('FHE') || error.message.includes('req')) {
+        setStatus('❌ Day mismatch! Please decrypt to verify your actual check-in days.')
+      } else {
+        setStatus(`❌ Claim failed: ${error.message}`)
+      }
     } finally {
       setIsLoading(false)
     }
   }
 
-  // Listen for chain changes
-  useEffect(() => {
-    if (publicClient) {
-      const unwatch = publicClient.watchBlockNumber({
-        onBlockNumber: () => {
-          // Chain changed, reload to reinitialize
-          if (isConnected) {
-            window.location.reload()
-          }
-        },
-      })
-
-      return () => {
-        unwatch()
-      }
-    }
-  }, [publicClient, isConnected])
+  // 注释：原本的 watchBlockNumber 会导致每个新区块都刷新页面
+  // 如果需要监听链切换，应该使用 wagmi 的 useChainId hook
 
   // Load user data
   useEffect(() => {

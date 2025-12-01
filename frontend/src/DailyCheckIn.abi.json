@@ -6,11 +6,6 @@
   },
   {
     "inputs": [],
-    "name": "InvalidKMSSignatures",
-    "type": "error"
-  },
-  {
-    "inputs": [],
     "name": "ZamaProtocolUnsupported",
     "type": "error"
   },
@@ -50,25 +45,6 @@
       }
     ],
     "name": "CheckedIn",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": false,
-        "internalType": "bytes32[]",
-        "name": "handlesList",
-        "type": "bytes32[]"
-      },
-      {
-        "indexed": false,
-        "internalType": "bytes",
-        "name": "abiEncodedCleartexts",
-        "type": "bytes"
-      }
-    ],
-    "name": "PublicDecryptionVerified",
     "type": "event"
   },
   {
@@ -209,16 +185,6 @@
         "internalType": "uint256",
         "name": "currentDay",
         "type": "uint256"
-      },
-      {
-        "internalType": "bytes",
-        "name": "cleartexts",
-        "type": "bytes"
-      },
-      {
-        "internalType": "bytes",
-        "name": "decryptionProof",
-        "type": "bytes"
       }
     ],
     "name": "claimReward",
