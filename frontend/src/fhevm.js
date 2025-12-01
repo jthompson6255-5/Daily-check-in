@@ -3,9 +3,8 @@ let fhevmInstance = null
 
 /**
  * Initialize FHEVM instance
- * @param {Object} provider - Optional ethereum provider (for OKX wallet support)
  */
-export const initFhevm = async (provider = null) => {
+export const initFhevm = async () => {
   if (fhevmInstance) {
     return fhevmInstance
   }
@@ -24,19 +23,11 @@ export const initFhevm = async (provider = null) => {
     await initSDK()
     console.log('✅ FHEVM SDK initialized with CDN')
 
-    // Use provided provider or fallback to window.ethereum
-    // This allows us to use OKX wallet provider when connected
-    const networkProvider = provider || window.ethereum
-    
-    if (!networkProvider) {
-      throw new Error('No ethereum provider found')
-    }
-
-    // Create instance with Sepolia config and the correct provider
-    const config = { ...SepoliaConfig, network: networkProvider }
+    // Create instance with Sepolia config and MetaMask provider
+    const config = { ...SepoliaConfig, network: window.ethereum }
 
     fhevmInstance = await createInstance(config)
-    console.log('✅ FHEVM instance created successfully with provider:', networkProvider)
+    console.log('✅ FHEVM instance created successfully')
 
     return fhevmInstance
   } catch (error) {

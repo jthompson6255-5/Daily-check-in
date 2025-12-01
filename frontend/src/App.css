@@ -45,6 +45,31 @@
   align-items: center;
 }
 
+/* Connect Wallet Button */
+.connect-wallet-button {
+  width: 100%;
+  padding: 1.25rem 2rem;
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: white;
+  border: none;
+  border-radius: 12px;
+  background: linear-gradient(90deg, #ff6b35 0%, #f7931e 50%, #ff4444 100%);
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3);
+}
+
+.connect-wallet-button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(255, 107, 53, 0.4);
+}
+
+.connect-wallet-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 /* Streak Card */
 .streak-card {
   background: white;

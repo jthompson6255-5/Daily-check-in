@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { BrowserProvider, Contract } from 'ethers'
-import { useAccount, useWalletClient, usePublicClient, useChainId } from 'wagmi'
+import { useAccount, useWalletClient, usePublicClient } from 'wagmi'
 import { ConnectButton } from '@rainbow-me/rainbowkit'
 import './App.css'
 import { CONTRACT_ADDRESS, SEPOLIA_CHAIN_ID } from './config'
@@ -12,7 +12,6 @@ function App() {
   const { address, isConnected } = useAccount()
   const { data: walletClient } = useWalletClient()
   const publicClient = usePublicClient()
-  const chainId = useChainId()
 
   const [provider, setProvider] = useState(null)
   const [signer, setSigner] = useState(null)
@@ -31,7 +30,6 @@ function App() {
   const [decryptedDays, setDecryptedDays] = useState(null)
   const [status, setStatus] = useState('')
   const [today] = useState(new Date())
-  const prevChainIdRef = useRef(null)
 
   // Get current month information
   const year = today.getFullYear()
@@ -56,37 +54,9 @@ function App() {
         setIsLoading(true)
         setStatus('Initializing wallet connection...')
 
-        // Detect the correct provider based on connected wallet
-        // OKX wallet uses window.okxwallet, MetaMask uses window.ethereum
-        let ethereumProvider = null
-        
-        // Check walletClient to determine which wallet is connected
-        const walletName = walletClient?.name?.toLowerCase() || ''
-        const walletId = walletClient?.id?.toLowerCase() || ''
-        const win = window
-        
-        console.log('[Wallet] Detecting provider', { walletName, walletId, hasOkx: !!win.okxwallet, hasEthereum: !!win.ethereum })
-        
-        // Check for OKX wallet first (if OKX is connected or available)
-        // OKX wallet provider can be at window.okxwallet.ethereum or window.okxwallet
-        if (walletName.includes('okx') || walletId.includes('okx') || win.okxwallet) {
-          // Try window.okxwallet.ethereum first (most common)
-          if (win.okxwallet?.ethereum) {
-            ethereumProvider = win.okxwallet.ethereum
-            console.log('[Wallet] Using OKX wallet provider (okxwallet.ethereum)')
-          } 
-          // Fallback to window.okxwallet directly
-          else if (win.okxwallet) {
-            ethereumProvider = win.okxwallet
-            console.log('[Wallet] Using OKX wallet provider (okxwallet)')
-          }
-        }
-        
-        // Fallback to MetaMask or other injected wallets
-        if (!ethereumProvider && win.ethereum) {
-          ethereumProvider = win.ethereum
-          console.log('[Wallet] Using window.ethereum provider')
-        }
+        // For injected wallets (MetaMask, OKX), use window.ethereum directly
+        // This is required for FHEVM SDK compatibility
+        const ethereumProvider = window.ethereum
         
         if (!ethereumProvider) {
           throw new Error('No ethereum provider found. Please install MetaMask or OKX wallet.')
@@ -94,26 +64,7 @@ function App() {
 
         // Create BrowserProvider and Signer
         const newProvider = new BrowserProvider(ethereumProvider)
-        
-        // Check if user rejected the connection request
-        let newSigner
-        try {
-          newSigner = await newProvider.getSigner()
-        } catch (signerError) {
-          // Handle user rejection or connection errors
-          if (signerError?.code === 4001 || signerError?.message?.includes('rejected') || signerError?.message?.includes('User rejected')) {
-            setStatus('⚠️ Connection rejected. Please try connecting again.')
-            setIsLoading(false)
-            return
-          }
-          // Handle "could not coalesce" error (multiple pending requests)
-          if (signerError?.code === -32002 || signerError?.message?.includes('coalesce')) {
-            setStatus('⚠️ Please wait for the previous connection request to complete.')
-            setIsLoading(false)
-            return
-          }
-          throw signerError
-        }
+        const newSigner = await newProvider.getSigner()
 
         setProvider(newProvider)
         setSigner(newSigner)
@@ -124,9 +75,9 @@ function App() {
 
         setStatus('Wallet connected! Initializing FHEVM...')
 
-        // Initialize FHEVM after wallet connection (pass the correct provider)
+        // Initialize FHEVM after wallet connection
         try {
-          const instance = await initFhevm(ethereumProvider)
+          const instance = await initFhevm()
           setFhevmInstance(instance)
 
           // Also set in fhevm.js module
@@ -140,15 +91,7 @@ function App() {
         }
       } catch (error) {
         console.error('Failed to initialize wallet:', error)
-        
-        // Better error messages for common errors
-        if (error?.code === 4001 || error?.message?.includes('rejected') || error?.message?.includes('User rejected')) {
-          setStatus('⚠️ Connection rejected. Please try connecting again.')
-        } else if (error?.code === -32002 || error?.message?.includes('coalesce')) {
-          setStatus('⚠️ Please wait for the previous connection request to complete.')
-        } else {
-          setStatus(`Failed to initialize wallet: ${error.message || 'Unknown error'}`)
-        }
+        setStatus(`Failed to initialize wallet: ${error.message}`)
       } finally {
         setIsLoading(false)
       }
@@ -353,20 +296,23 @@ function App() {
     }
   }
 
-  // Listen for chain changes (only reload when chain actually changes, not on every block)
+  // Listen for chain changes
   useEffect(() => {
-    if (isConnected && chainId) {
-      // Check if chain actually changed
-      if (prevChainIdRef.current !== null && prevChainIdRef.current !== chainId) {
-        console.log('Chain changed, reloading...', { from: prevChainIdRef.current, to: chainId })
-        window.location.reload()
-        return
+    if (publicClient) {
+      const unwatch = publicClient.watchBlockNumber({
+        onBlockNumber: () => {
+          // Chain changed, reload to reinitialize
+          if (isConnected) {
+            window.location.reload()
+          }
+        },
+      })
+
+      return () => {
+        unwatch()
       }
-      
-      // Store current chain ID
-      prevChainIdRef.current = chainId
     }
-  }, [chainId, isConnected])
+  }, [publicClient, isConnected])
 
   // Load user data
   useEffect(() => {
